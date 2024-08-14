@@ -506,8 +506,32 @@ function copyExpr(ast, fn) {
   return ast;
 }
 
+
+/**
+ * @example
+ * parseFunCall("UPDATE `gens` SET `extra` = JSON_MERGE_PATCH(extra, '{\"url\":\"https://www.wanxiang.art/?foo=\"}') WHERE `id` = 11110896")
+ * newSQL UPDATE `gens` SET `extra` = JSON_MERGE_PATCH(extra, ?) WHERE `id` = 11110896
+ * values = [ '{"url":"https://www.wanxiang.art/?foo="}' ]
+ * @param {String} sql
+ * @returns {Object}
+*/
+function parseFunCall(sql) {
+  const ast = parseExpr(sql);
+  const { type, name } = ast;
+  const values = [];
+  if (type === 'func' && ['json_merge_patch', 'json_merge_preserve'].includes(name)) {
+    for (const item of ast.args) {
+      if (item.type === 'literal' && item.value.includes('?')) {
+        values.push(item.value);
+        item.value = '?';
+      }
+    }
+  }
+  return { values, ast };
+}
+
 module.exports = {
   parseExpr, parseExprList,
   precedes,
-  walkExpr, findExpr, copyExpr,
+  walkExpr, findExpr, copyExpr, parseFunCall
 };
